@@ -1,8 +1,10 @@
-import requests
 import time
 
-from .config import DETECTOR_URL, GROUPING_URL, REQUEST_TIMEOUT
+import requests
+
 from common.logger import setup_logger
+
+from .config import DETECTOR_URL, GROUPING_URL, REQUEST_TIMEOUT
 
 logger = setup_logger("gateway.client")
 
@@ -33,7 +35,7 @@ def call_detector(file_bytes, filename="image.jpg", mimetype="image/jpeg"):
 
         return response.json()
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error calling detector service")
         raise
 
@@ -60,6 +62,6 @@ def call_grouping(detector_output):
 
         return response.json()
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error calling grouping service")
         raise

@@ -6,3 +6,13 @@
 *.pyc
 **/logs/
 
+
+# Environment
+.env
+
+# ML artefacts (datasets and weights are never committed; see docs/ci-cd/CI-CD-PLAN.md)
+/data/
+runs/
+mlruns/
+*.onnx
+**/.ipynb_checkpoints/

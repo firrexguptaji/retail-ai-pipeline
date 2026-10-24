@@ -1,20 +1,20 @@
-import torch
-from torchvision import models, transforms
-from sklearn.cluster import AgglomerativeClustering
-import numpy as np
 import cv2
-
-from .config import (
-    DISTANCE_THRESHOLD,
-    CLUSTERING_METRIC,
-    CLUSTERING_LINKAGE,
-    MODEL_NAME,
-    IMAGE_SIZE,
-    SPATIAL_WEIGHT,
-    DEVICE
-)
+import numpy as np
+import torch
+from sklearn.cluster import AgglomerativeClustering
+from torchvision import models, transforms
 
 from common.logger import setup_logger
+
+from .config import (
+    CLUSTERING_LINKAGE,
+    CLUSTERING_METRIC,
+    DEVICE,
+    DISTANCE_THRESHOLD,
+    IMAGE_SIZE,
+    MODEL_NAME,
+    SPATIAL_WEIGHT,
+)
 
 logger = setup_logger("grouping")
 

@@ -1,9 +1,11 @@
-import cv2
-import uuid
 import os
+import uuid
+
+import cv2
+
+from common.logger import setup_logger
 
 from .config import OUTPUT_DIR
-from common.logger import setup_logger
 
 logger = setup_logger("grouping.utils")
 

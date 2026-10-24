@@ -1,0 +1,8 @@
+# Lint config used by pre-commit and CI (M3.1). Kept small on purpose:
+# syntax errors, undefined names, unused imports/variables, import order.
+line-length = 100
+target-version = "py311"
+extend-exclude = ["venv", "notebooks"]
+
+[lint]
+select = ["E4", "E7", "E9", "F", "I"]

@@ -1,0 +1,340 @@
+{
+  "repo": "firrexguptaji/retail-ai-pipeline",
+  "project": { "owner": "firrexguptaji", "number": 6 },
+
+  "rules": {
+    "split": "An issue gets real sub-issues (each with its own branch) only when it is size L and its parts can be reviewed on their own. Everything else is one branch with a task checklist.",
+    "releases": "Three releases: v0.2.0 (reliable and measured), v0.5.0 (CI/CD and improved models), v1.0.0 (fast, observable, documented)."
+  },
+
+  "labels": [
+    { "name": "area: gateway",        "color": "1d76db", "description": "Gateway service and UI" },
+    { "name": "area: detector",       "color": "0e8a16", "description": "YOLO detector service" },
+    { "name": "area: grouping",       "color": "5319e7", "description": "Embedding + clustering service" },
+    { "name": "area: ml",             "color": "b60205", "description": "Notebooks, datasets, training, evaluation" },
+    { "name": "area: infra",          "color": "0052cc", "description": "Docker, CI/CD, releases" },
+    { "name": "area: observability",  "color": "c5def5", "description": "Metrics, tracing, dashboards" },
+    { "name": "area: docs",           "color": "0075ca", "description": "Documentation" },
+    { "name": "type: feature",        "color": "a2eeef", "description": "New capability" },
+    { "name": "type: bug",            "color": "d73a4a", "description": "Something is broken" },
+    { "name": "type: experiment",     "color": "f9d0c4", "description": "Measured ML experiment with a report" },
+    { "name": "type: test",           "color": "bfd4f2", "description": "Tests and validation" },
+    { "name": "type: chore",          "color": "ededed", "description": "Tooling, hygiene, process" },
+    { "name": "priority: high",       "color": "b60205", "description": "Do first; blocks other work" },
+    { "name": "priority: medium",     "color": "fbca04", "description": "Planned for the current milestone" },
+    { "name": "priority: low",        "color": "c2e0c6", "description": "Nice to have" }
+  ],
+
+  "milestones": [
+    { "key": "M1", "title": "M1 — Foundation: Workflow, Fixes & Tests", "release": null,     "description": "Workflow in place, no request can crash a service, pytest suite covers units, APIs and failure paths." },
+    { "key": "M2", "title": "M2 — Evaluation Baseline",                  "release": "v0.2.0", "description": "Labelled eval set and harness; detection, grouping and latency baseline with confidence intervals." },
+    { "key": "M3", "title": "M3 — CI/CD & Docker",                       "release": null,     "description": "Tests, lint, Docker builds and eval gate on every PR; images and releases published automatically; weights out of git." },
+    { "key": "M4", "title": "M4 — Model R&D",                            "release": "v0.5.0", "description": "Detector fine-tuned on SKU-110K, grouping experiments, best models promoted manually with model cards." },
+    { "key": "M5", "title": "M5 — Performance & Observability",          "release": null,     "description": "Lower latency measured against the baseline; Prometheus, Grafana and Jaeger." },
+    { "key": "M6", "title": "M6 — Documentation & v1.0.0",               "release": "v1.0.0", "description": "Docs that match the code, walkthrough, changelog, v1.0.0." },
+    { "key": "L",  "title": "Later — Automated Training Pipeline",        "release": null,     "description": "Optional. Start only after one model has been promoted manually in M4." }
+  ],
+
+  "issues": [
+    {
+      "key": "M1.1", "milestone": "M1", "title": "Workflow setup and repository hygiene",
+      "labels": ["type: chore", "area: docs", "area: infra"], "priority": "high", "size": "S",
+      "summary": "Put the workflow in writing, make GitHub enforce it, and stop committing generated files.",
+      "tasks": [
+        "Move templates into .github/ (issue templates + PR template)",
+        "Add docs/workflow/WORKFLOW.md and a short CONTRIBUTING.md",
+        "Run scripts/github/bootstrap.py to create labels, milestones and issues",
+        "Protect main: PR required, no force-push (CI checks added in M3)",
+        "Update .gitignore (data/, runs/, mlruns/, checkpoints) and add .env.example for every env var",
+        "Add pre-commit with ruff and nbstripout"
+      ],
+      "acceptance": [
+        "Templates render on GitHub; roadmap issues exist on board #6 with Priority and Size",
+        "main is protected",
+        ".env.example matches all os.getenv calls; pre-commit run --all-files passes"
+      ]
+    },
+    {
+      "key": "M1.2", "milestone": "M1", "title": "Validate input and return safe errors",
+      "labels": ["type: bug", "area: gateway"], "priority": "high", "size": "M",
+      "summary": "Corrupt or oversized uploads crash the detector (cv2.imdecode returns None) and services return raw exception text.",
+      "tasks": [
+        "Gateway: MAX_UPLOAD_MB limit, content-type and decode check before calling detector",
+        "Detector and grouping: validate payloads; 500 responses carry only an error id",
+        "Gateway: REQUEST_TIMEOUT from env; downstream timeout → 504, other failure → 502"
+      ],
+      "acceptance": [
+        "Corrupt/non-image upload → 400; too large → 413; no stack traces or exception text in any response",
+        "Each case covered by a test"
+      ]
+    },
+    {
+      "key": "M1.3", "milestone": "M1", "title": "Fix grouping edge cases and preprocessing",
+      "labels": ["type: bug", "area: grouping"], "priority": "high", "size": "M",
+      "summary": "One detection crashes AgglomerativeClustering; ResNet input lacks ImageNet normalisation; embeddings run one crop at a time.",
+      "tasks": [
+        "Handle 0 and 1 detections",
+        "Add ImageNet mean/std normalisation; use torchvision weights enum instead of pretrained=True",
+        "Batch embedding inference; move model to device once"
+      ],
+      "acceptance": [
+        "0, 1 and 2 detections return valid responses (tested)",
+        "Preprocessing test checks tensor shape, dtype and value range",
+        "Note in PR: grouping output changes; re-measured in M2"
+      ]
+    },
+    {
+      "key": "M1.4", "milestone": "M1", "title": "Fix detector configuration",
+      "labels": ["type: bug", "area: detector"], "priority": "high", "size": "S",
+      "summary": "MODEL_PATH default uses Windows backslashes relative to the working directory; confidence threshold is hard-coded.",
+      "tasks": [
+        "Resolve MODEL_PATH relative to the repo; fail fast with a clear log if weights are missing",
+        "CONF_THRESHOLD from env; Ultralytics verbose output off"
+      ],
+      "acceptance": [
+        "Service starts from repo root on Windows, Linux and Docker",
+        "Missing-weights path covered by a test"
+      ]
+    },
+    {
+      "key": "M1.5", "milestone": "M1", "title": "Test framework across services",
+      "labels": ["type: test"], "priority": "high", "size": "L", "split": true,
+      "summary": "The project has no tests. Add a pytest suite that runs fast without model weights, plus one slow end-to-end test.",
+      "acceptance": [
+        "pytest runs from repo root; unit + API tests need no weights",
+        "Failure paths tested for every endpoint",
+        "README documents how to run tests"
+      ],
+      "sub_issues": [
+        { "key": "M1.5.a", "title": "pytest setup, fake models and unit tests", "acceptance": ["YOLO and ResNet stubbed by fixtures", "sliding window, filters, NMS, spatial features, clustering covered incl. image smaller than slice and no boxes"] },
+        { "key": "M1.5.b", "title": "API tests for gateway, detector and grouping", "acceptance": ["Flask test client; downstream calls mocked; error paths asserted"] },
+        { "key": "M1.5.c", "title": "End-to-end smoke test on a sample image", "acceptance": ["marked slow; real weights; asserts response schema"] }
+      ]
+    },
+
+    {
+      "key": "M2.1", "milestone": "M2", "title": "Build labelled evaluation set",
+      "labels": ["type: feature", "area: ml"], "priority": "high", "size": "M",
+      "summary": "Without ground truth no accuracy claim can be checked. Start with 20 shelf images (grown to 40+ in M4.2).",
+      "tasks": [
+        "Annotation guideline: what is a product, partial products, what counts as the same SKU",
+        "Label 20 images with boxes and SKU group IDs (Label Studio or CVAT), export in a documented format",
+        "data/eval/ manifest with checksums; eval images never used for training"
+      ],
+      "acceptance": [
+        "docs/evaluation/annotation-guideline.md exists",
+        "20 labelled images load and pass checksum verification"
+      ]
+    },
+    {
+      "key": "M2.2", "milestone": "M2", "title": "Evaluation harness and baseline report",
+      "labels": ["type: feature", "area: ml"], "priority": "high", "size": "L", "split": true,
+      "summary": "One command that scores detection, grouping and latency separately, with confidence intervals so small differences are not over-claimed.",
+      "acceptance": [
+        "Every metric reported with a 95% bootstrap confidence interval (resampling images)",
+        "docs/evaluation/baseline.md lists workload, environment, method and results",
+        "eval/baseline.json committed for the CI gate"
+      ],
+      "sub_issues": [
+        { "key": "M2.2.a", "title": "Detection metrics", "acceptance": ["precision, recall, mAP@0.5", "IoU matching unit-tested"] },
+        { "key": "M2.2.b", "title": "Grouping metrics on ground-truth and predicted boxes", "acceptance": ["ARI, NMI, purity on GT boxes (isolates grouping) and on predicted boxes (end-to-end)", "tested on toy data"] },
+        { "key": "M2.2.c", "title": "Latency benchmark and baseline report", "acceptance": ["fixed images, warm-up, p50/p95 per stage, peak memory", "bootstrap CIs", "baseline.md + baseline.json"] }
+      ]
+    },
+
+    {
+      "key": "M3.1", "milestone": "M3", "title": "CI on pull requests",
+      "labels": ["type: feature", "area: infra"], "priority": "high", "size": "M",
+      "summary": "GitHub Actions on every PR into main.",
+      "tasks": [
+        "ci.yml: ruff + pytest (no weights)",
+        "docker-build.yml: buildx per service with GitHub Actions cache",
+        "eval-gate.yml: CPU eval on a small fixed subset, compared with eval/baseline.json using eval/gate.yaml tolerances",
+        "Add these as required checks on main"
+      ],
+      "acceptance": [
+        "A PR that breaks a test, a Dockerfile or drops metrics beyond tolerance cannot merge"
+      ]
+    },
+    {
+      "key": "M3.2", "milestone": "M3", "existing": 8, "title": "Improve Docker Build Time",
+      "labels": ["type: chore", "area: infra"], "priority": "medium", "size": "M",
+      "summary": "Build context is the repo root with no .dockerignore, so the 1.9 GB venv is sent on every build. Images carry full OpenCV, ffmpeg and CUDA torch wheels.",
+      "tasks": [
+        "Add .dockerignore (venv, data, notebooks, outputs, logs)",
+        "opencv-python-headless, CPU-only torch wheels, drop ffmpeg and unused open-clip",
+        "Record context size, image size and cold/warm rebuild time before and after"
+      ],
+      "acceptance": [
+        "Rebuild without dependency changes < 1 min (measured)",
+        "All services start and pass the smoke test"
+      ]
+    },
+    {
+      "key": "M3.3", "milestone": "M3", "title": "CD: images, releases and model weights out of git",
+      "labels": ["type: feature", "area: infra"], "priority": "medium", "size": "M",
+      "summary": "Merges to main publish images; version tags publish releases; weights become release assets.",
+      "tasks": [
+        "Push images to GHCR on merge to main (sha tag) and on v* tags",
+        "release.yml on v* tags: CHANGELOG section + eval report",
+        "Weights as release assets with sha256; download script verifies before load; remove models/yolov8n.pt from git"
+      ],
+      "acceptance": [
+        "docker-compose can run from published images",
+        "Fresh clone downloads and verifies weights with one command"
+      ]
+    },
+
+    {
+      "key": "M4.1", "milestone": "M4", "title": "Restructure notebooks around shared code",
+      "labels": ["type: feature", "area: ml"], "priority": "high", "size": "M",
+      "summary": "The current notebook duplicates service code. Notebooks should import the same preprocessing and metrics as the services so results transfer.",
+      "tasks": [
+        "Create ml/ package (preprocessing, metrics, visualisation) used by services, harness and notebooks",
+        "Notebook conventions: numbered, parameter cell, fixed seeds, outputs stripped; experiment report template",
+        "00_data_exploration: SKU-110K and own images (resolution, objects per image, box size/aspect)",
+        "01_baseline_reproduce: reproduces eval/baseline.json"
+      ],
+      "acceptance": [
+        "Both notebooks run top to bottom",
+        "01 matches baseline.json within its confidence intervals"
+      ]
+    },
+    {
+      "key": "M4.2", "milestone": "M4", "title": "Grow evaluation set to 40+ images",
+      "labels": ["type: feature", "area: ml"], "priority": "high", "size": "M",
+      "summary": "20 images give wide confidence intervals. Grow the set before model decisions are made.",
+      "tasks": [
+        "Label 20+ more images following the guideline, covering lighting, angle and shelf types",
+        "Re-run baseline; update baseline.md/json and gate tolerances"
+      ],
+      "acceptance": [
+        "40+ labelled images",
+        "Baseline CIs reported narrower than with 20 images"
+      ]
+    },
+    {
+      "key": "M4.3", "milestone": "M4", "title": "Fine-tune YOLOv8 on SKU-110K",
+      "labels": ["type: experiment", "area: detector", "area: ml"], "priority": "high", "size": "L", "split": true,
+      "depends_on": ["M2.2", "M4.1", "M4.2"],
+      "summary": "Replace the COCO-pretrained detector with one trained on dense retail shelves, on the local GPU, judged on our own eval set.",
+      "acceptance": [
+        "docs/experiments/EXP-001-detector-finetune.md with results table, CIs and a decision",
+        "Runs logged with params, metrics and weights hash"
+      ],
+      "sub_issues": [
+        { "key": "M4.3.a", "title": "Prepare SKU-110K: licence, disk space, YOLO format", "acceptance": ["licence terms recorded in the report", "disk space checked before download", "scripted download + conversion"] },
+        { "key": "M4.3.b", "title": "Train yolov8n vs yolov8s, image size sweep; full-image vs sliding window", "acceptance": ["accuracy and p50/p95 latency for each variant"] },
+        { "key": "M4.3.c", "title": "Sweep confidence, NMS (confidence-ranked) and area filters; write EXP-001", "acceptance": ["chosen settings justified by eval metrics with CIs"] }
+      ]
+    },
+    {
+      "key": "M4.4", "milestone": "M4", "title": "Grouping experiments",
+      "labels": ["type: experiment", "area: grouping", "area: ml"], "priority": "high", "size": "L", "split": true,
+      "depends_on": ["M2.2", "M4.1", "M4.2"],
+      "summary": "Measure each grouping choice on ground-truth boxes, one variable at a time.",
+      "acceptance": [
+        "docs/experiments/EXP-002-grouping.md with results table, CIs and a decision"
+      ],
+      "sub_issues": [
+        { "key": "M4.4.a", "title": "Crop preprocessing and embedding backbones", "acceptance": ["pad vs stretch, no JPEG round-trip", "ResNet18, ResNet50, CLIP ViT-B/32, DINOv2-S: accuracy and per-crop latency"] },
+        { "key": "M4.4.b", "title": "Spatial features: measure contribution, weight sweep", "acceptance": ["visual vs spatial norm ratio reported"] },
+        { "key": "M4.4.c", "title": "Clustering: threshold/linkage sweep, cosine, HDBSCAN; write EXP-002", "acceptance": ["threshold sensitivity plot"] }
+      ]
+    },
+    {
+      "key": "M4.5", "milestone": "M4", "title": "Promote best models (manual)",
+      "labels": ["type: feature", "area: ml"], "priority": "medium", "size": "M",
+      "depends_on": ["M4.3", "M4.4"],
+      "summary": "Ship the winners through config, by hand, once. This manual run is the prerequisite for automating training later.",
+      "tasks": [
+        "Publish chosen weights as a release asset; pin version in config",
+        "Model cards in docs/models/ (data, training, metrics with CIs, limits, licence)",
+        "Update eval/baseline.json; before/after table in PR"
+      ],
+      "acceptance": [
+        "All tests and eval gate pass with the new models",
+        "Promotion steps written down (input for the Later milestone)"
+      ]
+    },
+
+    {
+      "key": "M5.1", "milestone": "M5", "existing": 7, "title": "Optimize Detector Performance",
+      "labels": ["type: feature", "area: detector"], "priority": "medium", "size": "L", "split": true,
+      "depends_on": ["M4.5"],
+      "summary": "Reduce end-to-end latency without losing accuracy. Starts after M4 because the fine-tuned model may remove the need for sliding windows.",
+      "acceptance": [
+        "Latency target set from the baseline on a fixed workload and machine",
+        "Accuracy within eval gate tolerance",
+        "Before/after report in docs/evaluation/"
+      ],
+      "sub_issues": [
+        { "key": "M5.1.a", "title": "Batch sliding-window and embedding inference", "acceptance": ["one model call per batch (or sliding window removed if M4 showed full-image is enough)"] },
+        { "key": "M5.1.b", "title": "Cut inter-service payload size", "acceptance": ["payload bytes per request before/after"] },
+        { "key": "M5.1.c", "title": "Tune gunicorn workers/threads/timeouts and benchmark", "acceptance": ["memory per worker documented", "p50/p95 and accuracy table vs baseline"] }
+      ]
+    },
+    {
+      "key": "M5.2", "milestone": "M5", "existing": 4, "title": "Add Prometheus metrics to all services",
+      "labels": ["type: feature", "area: observability"], "priority": "medium", "size": "M",
+      "summary": "Expose /metrics in gateway, detector and grouping (already In progress on the board).",
+      "tasks": [
+        "Shared metrics helper in common/",
+        "Request count, error count, latency histogram per endpoint in all three services",
+        "Model metrics: inference time histogram, detections per image, groups per image"
+      ],
+      "acceptance": ["/metrics on all three services, tested via test client"]
+    },
+    {
+      "key": "M5.3", "milestone": "M5", "existing": 6, "title": "Add Prometheus + Grafana",
+      "labels": ["type: feature", "area: observability", "area: infra"], "priority": "medium", "size": "M",
+      "depends_on": ["M5.2"],
+      "summary": "Prometheus and Grafana in docker-compose with a provisioned dashboard.",
+      "tasks": ["Prometheus service and scrape config", "Grafana datasource and dashboard JSON provisioned from the repo"],
+      "acceptance": ["Prometheus UI on 9090 with all targets UP", "Dashboard loads with no manual steps"]
+    },
+    {
+      "key": "M5.4", "milestone": "M5", "existing": 5, "title": "Add distributed tracing with OpenTelemetry + Jaeger",
+      "labels": ["type: feature", "area: observability"], "priority": "medium", "size": "M",
+      "summary": "Trace gateway → detector → grouping with per-stage spans.",
+      "tasks": ["OpenTelemetry SDK with Flask and requests instrumentation", "Jaeger in docker-compose", "Custom spans: decode, inference, NMS, embedding, clustering"],
+      "acceptance": ["One trace per request in Jaeger with stage timings"]
+    },
+
+    {
+      "key": "M6.1", "milestone": "M6", "title": "Complete documentation set",
+      "labels": ["type: chore", "area: docs"], "priority": "medium", "size": "M",
+      "summary": "Docs that match the code.",
+      "tasks": [
+        "README: accurate structure, quickstart, results table",
+        "docs/architecture.md with diagram and data flow",
+        "docs/deployment.md: env vars, ports, weights, troubleshooting",
+        "Short ADRs for the main decisions, each citing its experiment report"
+      ],
+      "acceptance": ["Every command in README and deployment guide verified on a fresh clone"]
+    },
+    {
+      "key": "M6.2", "milestone": "M6", "title": "v1.0.0 release",
+      "labels": ["type: chore", "area: docs", "area: infra"], "priority": "medium", "size": "S",
+      "summary": "Changelog, walkthrough with screenshots, tagged release.",
+      "tasks": ["CHANGELOG for v0.2.0, v0.5.0, v1.0.0", "Walkthrough with UI, Grafana and Jaeger screenshots", "Tag v1.0.0; release published by CD"],
+      "acceptance": ["Release has images, weights and eval report attached"]
+    },
+
+    {
+      "key": "L.1", "milestone": "L", "title": "Automated model training pipeline (optional)",
+      "labels": ["type: feature", "area: ml", "area: infra"], "priority": "low", "size": "L", "split": true,
+      "depends_on": ["M4.5", "M3.3"],
+      "summary": "Automate what M4.5 did by hand: train → evaluate → gate → promote, on the local GPU via a self-hosted runner. Only worth doing if models will be retrained regularly.",
+      "acceptance": [
+        "Runner triggered only by workflow_dispatch; never by pull_request",
+        "Promotion requires manual approval (environment: model-release)"
+      ],
+      "sub_issues": [
+        { "key": "L.1.a", "title": "Training script with YAML config", "acceptance": ["same result as notebook for same config and seed"] },
+        { "key": "L.1.b", "title": "Hardened self-hosted GPU runner", "acceptance": ["dedicated non-admin user", "outside-collaborator workflows need approval"] },
+        { "key": "L.1.c", "title": "train-model workflow with gate and approved promotion", "acceptance": ["gate result in workflow summary", "promotion opens PR pinning new weights"] }
+      ]
+    }
+  ]
+}
