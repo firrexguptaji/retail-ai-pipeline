@@ -4,9 +4,11 @@ import time
 import requests
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
+from common.errors import ServiceError, error_response, register_error_handlers
 from common.logger import setup_logger
+from common.validation import max_upload_bytes, validate_image_bytes
 
-from .client import call_detector, call_grouping
+from .client import DownstreamError, DownstreamTimeout, call_detector, call_grouping
 from .config import DETECTOR_READY_URL, GROUPING_READY_URL, OUTPUT_DIR
 
 # -------------------------------
@@ -15,7 +17,19 @@ from .config import DETECTOR_READY_URL, GROUPING_READY_URL, OUTPUT_DIR
 
 logger = setup_logger("gateway")
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = max_upload_bytes()
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+register_error_handlers(app, logger)
+
+
+@app.errorhandler(DownstreamTimeout)
+def _downstream_timeout(e: DownstreamTimeout):
+    return error_response("upstream_timeout", f"{e.service} service timed out", 504)
+
+
+@app.errorhandler(DownstreamError)
+def _downstream_error(e: DownstreamError):
+    return error_response("upstream_error", f"{e.service} service is unavailable", 502)
 
 
 # -------------------------------
@@ -77,31 +91,25 @@ def get_output(filename):
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    try:
-        logger.info("/predict request received")
+    """Errors are turned into JSON responses by the registered error handlers."""
+    logger.info("/predict request received")
 
-        if "image" not in request.files:
-            logger.warning("No image provided in request")
-            return jsonify({"error": "No image provided"}), 400
+    file = request.files.get("image")
+    if file is None or file.filename == "":
+        raise ServiceError("missing_image", "No image provided", 400)
 
-        file = request.files["image"]
+    file_bytes = file.read()
+    validate_image_bytes(file_bytes)  # 400 / 413 / 415 before any downstream call
 
-        # Read file safely
-        file_bytes = file.read()
+    # Step 1: Detector
+    det_data = call_detector(file_bytes)
+    logger.info("Detector response received")
 
-        # Step 1: Detector
-        det_data = call_detector(file_bytes)
-        logger.info("Detector response received")
+    # Step 2: Grouping
+    grp_data = call_grouping(det_data)
+    logger.info("Grouping response received")
 
-        # Step 2: Grouping
-        grp_data = call_grouping(det_data)
-        logger.info("Grouping response received")
-
-        return jsonify(grp_data)
-
-    except Exception:
-        logger.exception("Error in /predict endpoint")
-        return jsonify({"error": "Internal server error"}), 500
+    return jsonify(grp_data)
 
 
 # -------------------------------

@@ -205,6 +205,37 @@ http://localhost:5000
 
 ---
 
+### Error Responses
+
+All services return errors as JSON. The `error` message is for people; `code` is stable for programs. Internal exception details are only written to the logs.
+
+```json
+{ "error": "Uploaded file is not a valid image", "code": "invalid_image" }
+```
+
+| Status | `code` | When |
+|---|---|---|
+| 400 | `missing_image` | No `image` field in the upload |
+| 400 | `empty_file` / `invalid_image` | Empty, corrupt or non-image file |
+| 400 | `invalid_payload` | Grouping received a malformed detector payload |
+| 413 | `payload_too_large` | Upload larger than `MAX_UPLOAD_MB` (default 10) |
+| 413 | `image_too_large` | Image larger than `MAX_IMAGE_PIXELS` (default 40 MP) |
+| 415 | `unsupported_image_type` | Not JPEG, PNG, WEBP or BMP |
+| 500 | `internal_error` | Unexpected failure; response includes an `error_id` to find in the logs |
+| 502 | `upstream_error` | Detector or grouping service failed or is unreachable |
+| 504 | `upstream_timeout` | Detector or grouping exceeded `REQUEST_TIMEOUT` (default 30 s) |
+
+---
+
+## ✅ Running Tests
+
+```bash
+pip install -r requirements/requirements-dev.txt
+pytest                 # fast: models are stubbed, no weights needed
+```
+
+---
+
 ## 📂 Project Structure
 
 ```
