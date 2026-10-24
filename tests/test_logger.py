@@ -1,5 +1,4 @@
 import io
-import logging
 
 from common.logger import setup_logger
 
