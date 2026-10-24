@@ -7,7 +7,15 @@ from ultralytics import YOLO
 
 from common.logger import setup_logger
 
-from .config import IOU_THRESHOLD, MAX_AREA_RATIO, MIN_AREA_RATIO, MODEL_PATH, OVERLAP, SLICE_SIZE
+from .config import (
+    CONF_THRESHOLD,
+    IOU_THRESHOLD,
+    MAX_AREA_RATIO,
+    MIN_AREA_RATIO,
+    MODEL_PATH,
+    OVERLAP,
+    SLICE_SIZE,
+)
 
 logger = setup_logger("detector")
 
@@ -21,9 +29,15 @@ def load_model():
     global model
 
     if model is None:
+        # Fail fast: Ultralytics would otherwise silently download weights for a missing path.
+        if not MODEL_PATH.is_file():
+            raise FileNotFoundError(
+                f"YOLO weights not found at {MODEL_PATH}. Set MODEL_PATH (absolute, or relative "
+                "to the repo root) or place the file in models/. See .env.example."
+            )
         logger.info(f"Loading YOLO model from {MODEL_PATH}")
-        model = YOLO(MODEL_PATH)
-        logger.info("Model loaded successfully")
+        model = YOLO(str(MODEL_PATH))
+        logger.info(f"Model loaded successfully (CONF_THRESHOLD={CONF_THRESHOLD})")
 
 
 # -------------------------------
@@ -68,7 +82,7 @@ def detect_products(image):
     for x_offset, y_offset, window in sliding_window(image):
         windows += 1
 
-        results = model(window, conf=0.03)[0]
+        results = model(window, conf=CONF_THRESHOLD, verbose=False)[0]
 
         if len(results.boxes) == 0:
             continue

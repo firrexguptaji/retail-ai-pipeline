@@ -306,7 +306,11 @@ OVERLAP = 0.4
 IOU_THRESHOLD = 0.4
 MIN_AREA_RATIO = 0.0005
 MAX_AREA_RATIO = 0.03
+CONF_THRESHOLD = 0.03          # YOLO confidence per window, in (0, 1]
+MODEL_PATH = "models/yolov8n.pt"  # absolute, or relative to the repo root
 ```
+
+The detector refuses to start if the weights file at `MODEL_PATH` is missing, rather than downloading a copy silently.
 
 ---
 
