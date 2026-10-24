@@ -1,9 +1,11 @@
-from flask import Flask, request, jsonify
-import numpy as np
-import cv2
 import base64
 
+import cv2
+import numpy as np
+from flask import Flask, jsonify, request
+
 from common.logger import setup_logger
+
 from .detector import detect_products, load_model
 
 app = Flask(__name__)

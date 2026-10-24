@@ -1,6 +1,5 @@
 import os
 
- 
 # Clustering
  
 DISTANCE_THRESHOLD = float(os.getenv("DISTANCE_THRESHOLD", 0.6))

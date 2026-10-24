@@ -1,9 +1,10 @@
-from common.logger import setup_logger
-
-from flask import Flask, request, jsonify
 import base64
-import numpy as np
+
 import cv2
+import numpy as np
+from flask import Flask, jsonify, request
+
+from common.logger import setup_logger
 
 from .grouping import group_products
 from .utils import draw_boxes, save_output

@@ -1,20 +1,13 @@
-from ultralytics import YOLO
-import cv2
-import numpy as np
 import time
+
+import cv2
 import torch
 from torchvision.ops import nms
-
-from .config import (
-    MODEL_PATH,
-    SLICE_SIZE,
-    OVERLAP,
-    IOU_THRESHOLD,
-    MIN_AREA_RATIO,
-    MAX_AREA_RATIO
-)
+from ultralytics import YOLO
 
 from common.logger import setup_logger
+
+from .config import IOU_THRESHOLD, MAX_AREA_RATIO, MIN_AREA_RATIO, MODEL_PATH, OVERLAP, SLICE_SIZE
 
 logger = setup_logger("detector")
 

@@ -1,18 +1,13 @@
 import os
 import time
-import requests
 
-from flask import Flask, request, jsonify, render_template, send_from_directory
+import requests
+from flask import Flask, jsonify, render_template, request, send_from_directory
 
 from common.logger import setup_logger
+
 from .client import call_detector, call_grouping
-from .config import (
-    DETECTOR_URL,
-    GROUPING_URL,
-    DETECTOR_READY_URL,
-    GROUPING_READY_URL,
-    OUTPUT_DIR
-)
+from .config import DETECTOR_READY_URL, GROUPING_READY_URL, OUTPUT_DIR
 
 # -------------------------------
 # Setup
