@@ -1,0 +1,111 @@
+# Moves an issue's card on the project board to "In progress" when its branch is created.
+#
+# Branch names (docs/workflow/WORKFLOW.md):
+#   <type>/<issue>-<slug>        e.g. fix/14-detector-config      -> issue #14
+#   sub/<parent>/<issue>-<slug>  e.g. sub/15/16-unit-tests        -> sub-issue #16
+# Other branch names are ignored.
+#
+# Only moves cards forward: an issue already "In progress", "In review" or "Done" is left alone.
+#
+# Requires the repository secret PROJECT_TOKEN: a classic personal access token with the
+# `project` and `repo` scopes. The default GITHUB_TOKEN cannot edit a user-owned project.
+# Optional repository variable PROJECT_NUMBER (defaults to 6).
+#
+# Note: for `create` events GitHub runs the workflow file from the new branch, so this only
+# takes effect for branches created from a main that already contains this file.
+
+name: Board - move issue to In progress
+
+on:
+  create:
+
+permissions:
+  contents: read
+
+jobs:
+  move-to-in-progress:
+    if: github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read issue number from branch name
+        id: parse
+        env:
+          BRANCH: ${{ github.event.ref }}
+        run: |
+          if [[ "$BRANCH" =~ ^(feat|fix|exp|test|chore|docs)/([0-9]+)- ]]; then
+            n="${BASH_REMATCH[2]}"
+          elif [[ "$BRANCH" =~ ^sub/[0-9]+/([0-9]+)- ]]; then
+            n="${BASH_REMATCH[1]}"
+          else
+            echo "Branch '$BRANCH' has no issue number; nothing to do."
+            exit 0
+          fi
+          echo "issue=$n" >> "$GITHUB_OUTPUT"
+          echo "Branch '$BRANCH' -> issue #$n"
+
+      - name: Move card to In progress
+        if: steps.parse.outputs.issue != ''
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER || '6' }}
+          ISSUE: ${{ steps.parse.outputs.issue }}
+          TARGET: In progress
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::warning::PROJECT_TOKEN secret is not set; card not moved."
+            exit 0
+          fi
+
+          # 1. Project id, Status field id and the id of the target option
+          proj=$(gh api graphql -F num="$PROJECT_NUMBER" -f owner="$OWNER" -f query='
+            query($owner: String!, $num: Int!) {
+              user(login: $owner) { projectV2(number: $num) {
+                id
+                field(name: "Status") { ... on ProjectV2SingleSelectField { id options { id name } } }
+              } }
+            }')
+          project_id=$(jq -r '.data.user.projectV2.id // empty' <<<"$proj")
+          field_id=$(jq -r '.data.user.projectV2.field.id // empty' <<<"$proj")
+          option_id=$(jq -r --arg t "$TARGET" '.data.user.projectV2.field.options[]? | select(.name == $t) | .id' <<<"$proj")
+          if [ -z "$project_id" ] || [ -z "$field_id" ] || [ -z "$option_id" ]; then
+            echo "::error::Project $PROJECT_NUMBER, its Status field or the '$TARGET' option was not found."
+            exit 1
+          fi
+
+          # 2. The issue's card on this project and its current status
+          item=$(gh api graphql -F num="$ISSUE" -f owner="$OWNER" -f repo="$REPO" -f query='
+            query($owner: String!, $repo: String!, $num: Int!) {
+              repository(owner: $owner, name: $repo) { issue(number: $num) {
+                projectItems(first: 20) { nodes {
+                  id
+                  project { id }
+                  fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { name } }
+                } }
+              } }
+            }') || { echo "::warning::Issue #$ISSUE not found."; exit 0; }
+          card=$(jq -c --arg p "$project_id" '[.data.repository.issue.projectItems.nodes[]? | select(.project.id == $p)][0] // empty' <<<"$item")
+          if [ -z "$card" ]; then
+            echo "::warning::Issue #$ISSUE is not on project $PROJECT_NUMBER; card not moved."
+            exit 0
+          fi
+          item_id=$(jq -r '.id' <<<"$card")
+          status=$(jq -r '.fieldValueByName.name // ""' <<<"$card")
+
+          # 3. Move forward only
+          case "$status" in
+            "In progress"|"In review"|"Done")
+              echo "Issue #$ISSUE is already '$status'; not moved."
+              exit 0 ;;
+          esac
+
+          gh api graphql -f p="$project_id" -f i="$item_id" -f f="$field_id" -f o="$option_id" -f query='
+            mutation($p: ID!, $i: ID!, $f: ID!, $o: String!) {
+              updateProjectV2ItemFieldValue(input: {
+                projectId: $p, itemId: $i, fieldId: $f, value: { singleSelectOptionId: $o }
+              }) { projectV2Item { id } }
+            }' > /dev/null
+          echo "Moved issue #$ISSUE from '${status:-no status}' to '$TARGET'."
