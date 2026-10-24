@@ -25,7 +25,8 @@ def _stub(name, **attrs):
 
 
 _stub("detector_service.detector", load_model=lambda: None, detect_products=lambda image: ([], []))
-_stub("grouping_service.grouping", group_products=lambda crops, boxes, shape: [0] * len(crops))
+_stub("grouping_service.grouping", load_model=lambda: None,
+      group_products=lambda crops, boxes, shape: [0] * len(crops))
 
 
 def image_bytes(fmt="PNG", size=(64, 48), color=(200, 30, 30)) -> bytes:

@@ -9,13 +9,16 @@ from common.errors import ServiceError, register_error_handlers
 from common.logger import setup_logger
 from common.validation import max_payload_bytes
 
-from .grouping import group_products
+from .grouping import group_products, load_model
 from .utils import draw_boxes, save_output
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = max_payload_bytes()
 logger = setup_logger("grouping_service")
 register_error_handlers(app, logger)
+
+# Load the embedding model once at startup, not on the first request
+load_model()
 
 
 @app.route("/health", methods=["GET"])
