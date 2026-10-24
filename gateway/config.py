@@ -18,7 +18,8 @@ GROUPING_URL = f"{GROUPING_BASE_URL}/group"
 DETECTOR_READY_URL = f"{DETECTOR_BASE_URL}/ready"
 GROUPING_READY_URL = f"{GROUPING_BASE_URL}/ready"
 
-REQUEST_TIMEOUT = 30
+# Seconds to wait for detector/grouping before returning 504
+REQUEST_TIMEOUT = float(os.getenv("REQUEST_TIMEOUT", "30"))
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
