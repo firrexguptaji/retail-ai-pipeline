@@ -318,7 +318,11 @@ SPATIAL_WEIGHT = 0.1
 IMAGE_SIZE = 224
 CLUSTERING_METRIC = "euclidean"
 CLUSTERING_LINKAGE = "average"
+DEVICE = "cpu"            # "cuda" falls back to CPU if unavailable
+EMBED_BATCH_SIZE = 32     # crops per ResNet forward pass
 ```
+
+Crops are converted BGR → RGB, resized to `IMAGE_SIZE` and normalised with ImageNet mean/std before ResNet18. A single detection is assigned group 0 without clustering.
 
 ---
 

@@ -20,8 +20,11 @@ IMAGE_SIZE = int(os.getenv("IMAGE_SIZE", 224))
 SPATIAL_WEIGHT = float(os.getenv("SPATIAL_WEIGHT", 0.1))
 
 
-# Device (optional)
+# Device: "cpu" or "cuda" (falls back to CPU if CUDA is unavailable)
 DEVICE = os.getenv("DEVICE", "cpu")
+
+# Crops per embedding forward pass
+EMBED_BATCH_SIZE = int(os.getenv("EMBED_BATCH_SIZE", "32"))
 
 #Output
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
