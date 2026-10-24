@@ -122,3 +122,34 @@ def test_load_model_uses_weights_enum(grouping, monkeypatch):
     assert calls == {"weights": grouping.models.ResNet18_Weights.IMAGENET1K_V1}
     assert model(torch.zeros(2, 3, 224, 224)).flatten(1).shape == (2, 512)
     assert grouping.load_model() is model  # cached, built once
+
+
+# ---------------------------------------------------------------- spatial features and clustering
+RED, BLUE = (0, 0, 255), (255, 0, 0)  # BGR
+FAR_BOXES = [[0, 0, 10, 10], [990, 990, 1000, 1000]]
+IMAGE = (1000, 1000, 3)
+
+
+def test_visually_different_crops_get_different_groups(grouping, monkeypatch):
+    monkeypatch.setattr(grouping, "SPATIAL_WEIGHT", 0.0)
+    boxes = [[0, 0, 10, 10], [20, 0, 30, 10], [40, 0, 50, 10], [60, 0, 70, 10]]
+    labels = grouping.group_products([crop(RED), crop(RED), crop(BLUE), crop(BLUE)], boxes, IMAGE)
+    assert labels[0] == labels[1] and labels[2] == labels[3] and labels[0] != labels[2]
+
+
+def test_identical_crops_far_apart_grouped_without_spatial_weight(grouping, monkeypatch):
+    monkeypatch.setattr(grouping, "SPATIAL_WEIGHT", 0.0)
+    labels = grouping.group_products([crop(RED), crop(RED)], FAR_BOXES, IMAGE)
+    assert labels[0] == labels[1]
+
+
+def test_large_spatial_weight_separates_far_apart_identical_crops(grouping, monkeypatch):
+    monkeypatch.setattr(grouping, "SPATIAL_WEIGHT", 1000.0)
+    labels = grouping.group_products([crop(RED), crop(RED)], FAR_BOXES, IMAGE)
+    assert labels[0] != labels[1]
+
+
+def test_labels_are_python_ints(grouping):
+    labels = grouping.group_products([crop(RED), crop(BLUE), crop(RED)],
+                                     [[0, 0, 10, 10], [20, 0, 30, 10], [40, 0, 50, 10]], IMAGE)
+    assert len(labels) == 3 and all(type(x) is int for x in labels)
