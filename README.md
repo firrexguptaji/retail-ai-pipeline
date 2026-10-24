@@ -232,6 +232,7 @@ All services return errors as JSON. The `error` message is for people; `code` is
 ```bash
 pip install -r requirements/requirements-dev.txt
 pytest                 # fast: models are stubbed, no weights needed
+pytest -m slow         # end-to-end with real YOLO + ResNet18 (needs models/yolov8n.pt)
 ```
 
 ---
