@@ -10,6 +10,7 @@ All notable changes are recorded here. Releases follow the plan in [docs/roadmap
 - Shared JSON error format `{"error", "code"}` with `error_id` on 500s across gateway, detector and grouping (#12)
 - Upload limits: `MAX_UPLOAD_MB`, `MAX_IMAGE_PIXELS`, `MAX_PAYLOAD_MB`; configurable `REQUEST_TIMEOUT` (#12)
 - pytest suite for input validation and failure paths, with stubbed models (#12)
+- Characterisation tests for detector sliding window and post-processing (area filter, NMS, near-duplicates, aspect ratio, padding, crops) and grouping spatial features/clustering (#16)
 
 ### Fixed
 
