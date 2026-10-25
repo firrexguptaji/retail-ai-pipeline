@@ -6,5 +6,6 @@ ultralytics==8.1.0
 opencv-python==4.9.0.80
 open-clip-torch==2.20.0
 scikit-learn==1.4.1.post1 
+scipy>=1.11,<1.14  # used directly by evaluation/ (also installed by scikit-learn)
 ipykernel==6.25.1
 pytest==8.3.3
