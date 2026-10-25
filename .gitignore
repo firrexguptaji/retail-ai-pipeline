@@ -11,7 +11,9 @@
 .env
 
 # ML artefacts (datasets and weights are never committed; see docs/ci-cd/CI-CD-PLAN.md)
-/data/
+/data/*
+!/data/eval/
+/data/eval/prelabels.json
 runs/
 mlruns/
 *.onnx

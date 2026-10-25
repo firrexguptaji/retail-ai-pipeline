@@ -237,6 +237,20 @@ pytest -m slow         # end-to-end with real YOLO + ResNet18 (needs models/yolo
 
 ---
 
+## 📏 Evaluation Set
+
+All model changes are measured against a hand-labelled evaluation set in `data/eval/annotations.json`
+(boxes plus same-product group codes for the images in `sample_images/`). See
+[docs/evaluation/annotation-guideline.md](docs/evaluation/annotation-guideline.md) and
+[docs/evaluation/labelling-setup.md](docs/evaluation/labelling-setup.md).
+
+```bash
+python scripts/eval/prelabel.py                                     # pre-fill boxes for labelling
+python scripts/eval/convert_labelstudio.py data/eval/labelstudio_export.json
+```
+
+---
+
 ## 📂 Project Structure
 
 ```

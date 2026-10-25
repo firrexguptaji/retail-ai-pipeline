@@ -13,6 +13,7 @@ All notable changes are recorded here. Releases follow the plan in [docs/roadmap
 - Characterisation tests for detector sliding window and post-processing (area filter, NMS, near-duplicates, aspect ratio, padding, crops) and grouping spatial features/clustering (#16)
 - API tests for health, readiness, UI, output files (incl. path traversal) and JSON 404/405 across services (#17)
 - End-to-end smoke test with real models through gateway -> detector -> grouping, marked `slow` (`pytest -m slow`) (#18)
+- Evaluation-set tooling: annotation guideline, Label Studio config, detector pre-labelling, export converter with checksums and validation (#19)
 
 ### Fixed
 
