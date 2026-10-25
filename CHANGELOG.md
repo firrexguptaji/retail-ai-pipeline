@@ -14,6 +14,7 @@ All notable changes are recorded here. Releases follow the plan in [docs/roadmap
 - API tests for health, readiness, UI, output files (incl. path traversal) and JSON 404/405 across services (#17)
 - End-to-end smoke test with real models through gateway -> detector -> grouping, marked `slow` (`pytest -m slow`) (#18)
 - Evaluation-set tooling: annotation guideline, Label Studio config, detector pre-labelling, export converter with checksums and validation (#19)
+- Detection metrics: one-to-one box matching, precision/recall/F1, matched IoU, count error, average precision (when scores exist), with bootstrap and paired-bootstrap confidence intervals (#21)
 
 ### Fixed
 
