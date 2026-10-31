@@ -36,9 +36,27 @@ class FakeYOLO:
         self.calls = 0
 
     def __call__(self, window, **kwargs):
+        if isinstance(window, list):
+            results = [FakeResult(self.per_call.get(i, [])) for i in range(len(window))]
+            self.calls += len(window)
+            return results
         boxes = self.per_call.get(self.calls, [])
         self.calls += 1
         return [FakeResult(boxes)]
+
+
+class BatchFakeYOLO:
+    """Records a batch call and returns one result for each input window."""
+
+    def __init__(self, per_window):
+        self.per_window = per_window
+        self.calls = 0
+        self.batch_size = 0
+
+    def __call__(self, windows, **kwargs):
+        self.calls += 1
+        self.batch_size = len(windows)
+        return [FakeResult(self.per_window.get(i, [])) for i in range(len(windows))]
 
 
 @pytest.fixture
@@ -100,6 +118,29 @@ def test_model_not_loaded_raises(det, monkeypatch):
 
 def test_no_detections(det, monkeypatch):
     assert run(det, monkeypatch, {}) == ([], [])
+
+
+def test_sliding_windows_are_inferred_in_one_batch(det, monkeypatch):
+    fake = BatchFakeYOLO({1: [[10, 20, 60, 90]]})
+    monkeypatch.setattr(det, "model", fake)
+
+    boxes, _ = det.detect_products(np.zeros((600, 600, 3), np.uint8))
+
+    assert fake.calls == 1 and fake.batch_size == 4, (
+        f"expected one model call with 4 windows, got {fake.calls} calls with {fake.batch_size} windows"
+    )
+    assert boxes == [[312, 15, 372, 95]]
+
+
+@pytest.mark.parametrize("result_count", [3, 5])
+def test_batch_result_count_must_match_window_count(det, monkeypatch, result_count):
+    class WrongCountYOLO:
+        def __call__(self, windows, **kwargs):
+            return [FakeResult([]) for _ in range(result_count)]
+
+    monkeypatch.setattr(det, "model", WrongCountYOLO())
+    with pytest.raises(RuntimeError, match="Model returned .* results for 4 windows"):
+        det.detect_products(np.zeros((600, 600, 3), np.uint8))
 
 
 def test_window_offsets_applied_and_box_padded(det, monkeypatch):
