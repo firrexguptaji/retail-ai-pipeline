@@ -76,14 +76,18 @@ def detect_products(image):
     img_area = h_img * w_img
 
     all_boxes = []
-    windows = 0
+    window_batch = list(sliding_window(image))
+    windows = len(window_batch)
 
-    # Sliding window inference
-    for x_offset, y_offset, window in sliding_window(image):
-        windows += 1
-
-        results = model(window, conf=CONF_THRESHOLD, verbose=False)[0]
-
+    # Run the model once for the complete set of sliding windows.
+    results_batch = model(
+        [window for _, _, window in window_batch], conf=CONF_THRESHOLD, verbose=False
+    )
+    if len(results_batch) != windows:
+        raise RuntimeError(
+            f"Model returned {len(results_batch)} results for {windows} windows"
+        )
+    for (x_offset, y_offset, _), results in zip(window_batch, results_batch):
         if len(results.boxes) == 0:
             continue
 
